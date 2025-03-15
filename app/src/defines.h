@@ -48,6 +48,7 @@
 
 #include <raylib.h>
 
+#define PAK_FILE_NAME "resource.pak"
 #define RESOURCE_PATH "D:/Workspace/resources/"
 
 #define TOTAL_ALLOCATED_MEMORY 128 * 1024 * 1024
@@ -178,7 +179,6 @@ typedef struct filename_offset_data {
 typedef struct file_data {
   i8 file_name[MAX_FILENAME_LENGTH];
   i8 file_extension[MAX_FILENAME_EXT_LENGTH];
-  i8 symbol[MAX_FILE_SYMBOL_LENGTH];
   u64 size;
 }file_data;
 

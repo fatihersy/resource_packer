@@ -1,17 +1,13 @@
 #include "defines.h"
 #include "core/fmemory.h"
 
-#define FILE_SYMBOL_START_SYMBOL 0x21
-#define FILE_SYMBOL_SYMBOL_MOD 127
-#define FILE_SYMBOL_SYMBOL_MAX 127
+#define HEADER_SYMBOL_START_SYMBOL 0x21
+#define HEADER_SYMBOL_SYMBOL_MOD 127
+#define HEADER_SYMBOL_SYMBOL_MAX 127
 
-#define FILE_SYMBOL_HEADER_SYMBOL_NEW_ENTRY_SPEC_START "start"
-#define FILE_SYMBOL_HEADER_SYMBOL_SIZE_START "filesize"
-#define FILE_SYMBOL_HEADER_SYMBOL_FILE_EXT_START "fileext"
-#define FILE_SYMBOL_HEADER_SYMBOL_FILENAME_START "filename"
-#define FILE_SYMBOL_HEADER_SYMBOL_NEW_ENTRY_SPEC_END "end"
-#define FILE_SYMBOL_DATA_START ""
-#define FILE_SYMBOL_DATA_END ""
+#define HEADER_SYMBOL_SPEC_BETWEEN "__ENTRY__"
+#define HEADER_SYMBOL_DATA_START "__START__"
+#define HEADER_SYMBOL_DATA_END "__END__"
 
 typedef struct main_state {
   file_data file_names[FILE_EXT_MAX][MAX_RESOURCE_FILES];
@@ -19,7 +15,6 @@ typedef struct main_state {
   u8 pak_data[TOTAL_PAK_FILE_SIZE];
   u32 pak_data_offset;
   u16 total_file_count;
-  u64 total_file_size;
 } main_state;
 
 static main_state *restrict state;
@@ -50,11 +45,6 @@ void compress_resource_folder(void) {
       filename_offset_data offdata = filename_offset(pathlist.paths[j]);
       copy_memory(curr_file->file_name, pathlist.paths[j] + offdata.filename_offset, offdata.path_length);
       copy_memory(curr_file->file_extension, curr_ext, TextLength(curr_ext));
-      for (u16 k=0; k<MAX_FILE_SYMBOL_LENGTH; ++k) {
-        u16 symbol = (FILE_SYMBOL_START_SYMBOL + (state->total_file_count%math_pow(FILE_SYMBOL_SYMBOL_MOD, k))) % FILE_SYMBOL_SYMBOL_MAX;
-        copy_memory(&curr_file->symbol[k], TextFormat("%c", symbol), TextLength(curr_ext));
-      }
-      if(MAX_FILE_SYMBOL_LENGTH_GAP) curr_file->symbol[MAX_FILE_SYMBOL_LENGTH_GAP] = '\0';
       const char * path = TextFormat("%s%s", RESOURCE_PATH, curr_file->file_name);
       if (!FileExists(path)) {
         TraceLog(LOG_INFO, "main::compress_resource_folder()::file '%s' doesn't exist", curr_file->file_name);
@@ -64,16 +54,14 @@ void compress_resource_folder(void) {
       u8* data = LoadFileData(path, &loaded_data);
       curr_file->size = loaded_data;
 
-      const char* header = TextFormat("%s%s%s%llu%s%s%s%s%s",
-        FILE_SYMBOL_HEADER_SYMBOL_NEW_ENTRY_SPEC_START,
-        curr_file->symbol,
-        FILE_SYMBOL_HEADER_SYMBOL_SIZE_START,
-        curr_file->size,
-        FILE_SYMBOL_HEADER_SYMBOL_FILE_EXT_START,
-        curr_file->file_extension,
-        FILE_SYMBOL_HEADER_SYMBOL_FILENAME_START,
+      const char* header = TextFormat("%s%s%s%s%s%llu%s",
+        HEADER_SYMBOL_SPEC_BETWEEN,
         curr_file->file_name,
-        FILE_SYMBOL_HEADER_SYMBOL_NEW_ENTRY_SPEC_END
+        HEADER_SYMBOL_SPEC_BETWEEN,
+        curr_file->file_extension,
+        HEADER_SYMBOL_SPEC_BETWEEN,
+        curr_file->size,
+        HEADER_SYMBOL_DATA_START
       );
       u32 new_offset = TextLength(header);
       
@@ -82,13 +70,15 @@ void compress_resource_folder(void) {
       copy_memory(state->pak_data + state->pak_data_offset, data, loaded_data);
       state->pak_data_offset += loaded_data;
 
+      u32 end_header_len = TextLength(HEADER_SYMBOL_DATA_END);
+      copy_memory(state->pak_data + state->pak_data_offset, HEADER_SYMBOL_DATA_END, end_header_len);
+      state->pak_data_offset += end_header_len;
+
       state->total_file_count++;
-      state->total_file_size = loaded_data + new_offset;
     }
   }
 
-
-
+  SaveFileData(RESOURCE_PATH PAK_FILE_NAME, state->pak_data, state->pak_data_offset);
 }
 
 filename_offset_data filename_offset(const char* str) {
