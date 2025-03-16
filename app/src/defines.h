@@ -51,15 +51,15 @@
 #define PAK_FILE_NAME "resource.pak"
 #define RESOURCE_PATH "D:/Workspace/resources/"
 
-#define TOTAL_ALLOCATED_MEMORY 128 * 1024 * 1024
-#define TOTAL_PAK_FILE_SIZE 64 * 1024 * 1024
+#define TOTAL_ALLOCATED_MEMORY 256 * 1024 * 1024
+#define TOTAL_PAK_FILE_SIZE 128 * 1024 * 1024
 
 #define MAX_RESOURCE_FILES 256
 
 #define MAX_FILENAME_LENGTH 64
 #define MAX_FILENAME_EXT_LENGTH 5
-#define MAX_FILE_SYMBOL_LENGTH 4
-#define MAX_FILE_SYMBOL_LENGTH_GAP 3 // Last one reserved for '\0'
+
+#define HEADER_SYMBOL_ENTRY "__ENTRY__"
 
 // Unsigned int types.
 typedef unsigned char u8;

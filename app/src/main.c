@@ -1,14 +1,6 @@
 #include "defines.h"
 #include "core/fmemory.h"
 
-#define HEADER_SYMBOL_START_SYMBOL 0x21
-#define HEADER_SYMBOL_SYMBOL_MOD 127
-#define HEADER_SYMBOL_SYMBOL_MAX 127
-
-#define HEADER_SYMBOL_SPEC_BETWEEN "__ENTRY__"
-#define HEADER_SYMBOL_DATA_START "__START__"
-#define HEADER_SYMBOL_DATA_END "__END__"
-
 typedef struct main_state {
   file_data file_names[FILE_EXT_MAX][MAX_RESOURCE_FILES];
 
@@ -54,14 +46,13 @@ void compress_resource_folder(void) {
       u8* data = LoadFileData(path, &loaded_data);
       curr_file->size = loaded_data;
 
-      const char* header = TextFormat("%s%s%s%s%s%llu%s",
-        HEADER_SYMBOL_SPEC_BETWEEN,
+      const char* header = TextFormat("%s%s%s%s%llu%s",
         curr_file->file_name,
-        HEADER_SYMBOL_SPEC_BETWEEN,
+        HEADER_SYMBOL_ENTRY,
         curr_file->file_extension,
-        HEADER_SYMBOL_SPEC_BETWEEN,
+        HEADER_SYMBOL_ENTRY,
         curr_file->size,
-        HEADER_SYMBOL_DATA_START
+        HEADER_SYMBOL_ENTRY
       );
       u32 new_offset = TextLength(header);
       
@@ -70,9 +61,8 @@ void compress_resource_folder(void) {
       copy_memory(state->pak_data + state->pak_data_offset, data, loaded_data);
       state->pak_data_offset += loaded_data;
 
-      u32 end_header_len = TextLength(HEADER_SYMBOL_DATA_END);
-      copy_memory(state->pak_data + state->pak_data_offset, HEADER_SYMBOL_DATA_END, end_header_len);
-      state->pak_data_offset += end_header_len;
+      copy_memory(state->pak_data + state->pak_data_offset, HEADER_SYMBOL_ENTRY, TextLength(HEADER_SYMBOL_ENTRY));
+      state->pak_data_offset += TextLength(HEADER_SYMBOL_ENTRY);
 
       state->total_file_count++;
     }
