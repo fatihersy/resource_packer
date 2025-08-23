@@ -48,6 +48,7 @@
 
 #include <string>
 #include <array>
+#include <vector>
 
 #define MAP_PAK_FILE_NAME "map.pak"
 #define ASSET_PAK_FILE_NAME "asset.pak"
@@ -487,6 +488,7 @@ typedef enum file_extension {
   FILE_EXT_WAV,
   FILE_EXT_TTF,
   FILE_EXT_TXT,
+  FILE_EXT_LOC_DATA,
   FILE_EXT_MAX
 }file_extension;
 
@@ -539,5 +541,24 @@ typedef struct worldmap_stage_file {
     this->is_success = false;
   }
 } worldmap_stage_file;
+
+typedef struct asset_pak_folder {
+  std::vector<std::string> file_names;
+  std::string path_to_resource;
+  std::string pak_file_name;
+  std::string pak_data;
+  
+  asset_pak_folder(void) {
+    this->file_names = std::vector<std::string>();
+    this->path_to_resource = std::string();
+    this->pak_file_name = std::string();
+    this->pak_data = std::string();
+  }
+  asset_pak_folder(std::string pak_name, std::string path_to_res, std::vector<std::string> file_names) : asset_pak_folder() {
+    this->pak_file_name = pak_name;
+    this->path_to_resource = path_to_res;
+    this->file_names = file_names;
+  }
+}asset_pak_folder;
 
 #endif

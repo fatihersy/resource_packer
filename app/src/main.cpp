@@ -2,8 +2,6 @@
 #include "raylib.h"
 #include "core/fmemory.h"
 
-#include <vector>
-
 #define MAX_RESOURCE_FILES 256
 
 #define MAX_FILENAME_LENGTH 64
@@ -13,22 +11,18 @@
 #define HEADER_SYMBOL_END "__END__"
 
 #define MAP_FILE_EXTENSION ".txt"
-#define MAP_PAK_FOLDER_PATH "map_files/"
+#define MAP_PAK_FOLDER_PATH "map_layers/"
 #define ASSET_PAK_FOLDER_PATH "asset_files/"
-
 
 typedef struct main_state {
   i32 stage_count;
 	std::vector<std::string> file_buffer;
-  std::vector<std::string> file_names;
-  std::vector<std::string> asset_file_names;
-
-  std::string asset_pak_data;
+  std::vector<asset_pak_folder> folder_to_pak;
+  
   std::string map_pak_data;
   std::string read_buffer;
   std::string header_start;
   std::string header_end;
-	size_t asset_pak_data_size;
 	size_t map_pak_data_size;
 	size_t read_buffer_size;
 	size_t header_start_size;
@@ -37,12 +31,11 @@ typedef struct main_state {
   main_state(void) {
     this->stage_count = 0;
     this->file_buffer = std::vector<std::string>();
-    this->file_names = std::vector<std::string>();
-    this->asset_file_names = std::vector<std::string>();
-    this->asset_pak_data = std::string("");
+    this->folder_to_pak = std::vector<asset_pak_folder>();
     this->map_pak_data = std::string("");
     this->read_buffer = std::string("");
-		this->asset_pak_data_size = 0u;
+    this->header_start = std::string("");
+    this->header_end = std::string("");
 		this->map_pak_data_size = 0u;
 		this->read_buffer_size = 0u;
 		this->header_start_size = 0u;
@@ -56,14 +49,14 @@ filename_offset_data filename_offset(std::string str);
 const char* get_header(file_data* curr_file);
 std::string stage_index_to_filename(worldmap_stage_file_content wsf_type, i32 index, i32 layer = 0);
 
-void write_asset_pak(void);
+void write_asset_pak(asset_pak_folder* asset_folder);
 void write_map_pak(void);
 const char * append_map_pak_data(worldmap_stage_file_content content_type, i32 location, i32 layer);
 
 const char* file_ext_enum_to_str(file_extension ext);
 
 i32 read_file(const char * path) {
-  if (!FileExists(path)) {
+  if (not FileExists(path)) {
     TraceLog(LOG_INFO, "main::write_map_pak()::file '%s' doesn't exist", path);
     return -1;
   }
@@ -88,55 +81,82 @@ int main(void)
   }
   *state = main_state();
 
-  state->asset_file_names.push_back(std::string("aaa_game_start_loading_screen.png"));
-  state->asset_file_names.push_back(std::string("abracadabra.ttf"));
-  state->asset_file_names.push_back(std::string("miosevka_light.ttf"));
-  state->asset_file_names.push_back(std::string("button_click1.wav"));
-  state->asset_file_names.push_back(std::string("button_click2.wav"));
-  state->asset_file_names.push_back(std::string("button_click3.wav"));
-  state->asset_file_names.push_back(std::string("deny.wav"));
-  state->asset_file_names.push_back(std::string("main_menu_theme.wav"));
-  state->asset_file_names.push_back(std::string("worldmap_wo_clouds.png"));
-  state->asset_file_names.push_back(std::string("atlas.png"));
+  state->folder_to_pak.push_back(asset_pak_folder("asset1.pak", "asset1_files/",
+    std::vector<std::string>({
+      "aaa_game_start_loading_screen.png",
+      "abracadabra.ttf",
+      "miosevka_light.ttf",
+      "miosevka_light_italic.ttf",
+      "button_click1.wav",
+      "button_click2.wav",
+      "button_click3.wav",
+      "deny.wav",
+      "main_menu_theme.wav",
+      "night_theme_2.wav",
+      "Track_#5.wav",
+      "worldmap_wo_clouds.png"
+    })
+  ));
+
+  state->folder_to_pak.push_back(asset_pak_folder("asset2.pak", "asset2_files/",
+    std::vector<std::string>({
+      "fade_transition.fs",
+      "font_outline.fs",
+      "map_choice_image.fs",
+      "post_process.fs",
+      "prg_bar_mask.fs",
+      "0._loc_data",
+      "1._loc_data",
+      "atlas.png",
+    })
+  ));
 
   state->header_start = std::string(HEADER_SYMBOL_BEGIN);
   state->header_end = std::string(HEADER_SYMBOL_END);
 	state->header_start_size = TextLength(state->header_start.c_str());
 	state->header_end_size = TextLength(state->header_end.c_str());
 
-  write_asset_pak();
+  write_asset_pak(&state->folder_to_pak.at(0));
+  write_asset_pak(&state->folder_to_pak.at(1));
+
   write_map_pak();
 
   return EXIT_SUCCESS;
 }
 
-void write_asset_pak(void) {
-    for (size_t itr_000 = 0u; itr_000 < state->asset_file_names.size(); ++itr_000) {
-			std::string _path = state->asset_file_names.at(itr_000);
+void write_asset_pak(asset_pak_folder* asset_folder) {
+  if (not asset_folder or asset_folder == nullptr) {
+    return;
+  }
 
-      const char * path = TextFormat("%s%s", RESOURCE_PATH ASSET_PAK_FOLDER_PATH, _path.c_str());
-      if (not FileExists(path)) {
-        TraceLog(LOG_INFO, "main::write_asset_pak()::file '%s' doesn't exist", _path.c_str());
-        continue;
-      }
-      int loaded_data = 1;
-      u8* data = LoadFileData(path, &loaded_data);
-			if (loaded_data <= 1) {
-        TraceLog(LOG_INFO, "main::write_asset_pak()::file '%s' cannot loaded successfully", _path.c_str());
-				return;
-			}
-
-      state->asset_pak_data.append(state->header_start);
-      state->asset_pak_data.append(data, data + loaded_data);
-      state->asset_pak_data.append(state->header_end);
-
-      UnloadFileData(data);
+  for (size_t itr_000 = 0u; itr_000 < asset_folder->file_names.size(); ++itr_000) {
+		std::string _path = asset_folder->file_names.at(itr_000);
+    const char * path = TextFormat("%s%s%s", RESOURCE_PATH, asset_folder->path_to_resource.c_str(), _path.c_str());
+    if (not FileExists(path)) {
+      TraceLog(LOG_INFO, "main::write_asset_pak()::file '%s' doesn't exist", _path.c_str());
+      continue;
     }
+    int loaded_data = 1;
+    u8* data = LoadFileData(path, &loaded_data);
+		if (loaded_data <= 1) {
+      TraceLog(LOG_INFO, "main::write_asset_pak()::file '%s' cannot loaded successfully", _path.c_str());
+			return;
+		}
+    size_t size_cache = asset_folder->pak_data.size();
 
-  SaveFileData(ASSET_PAK_FILE_NAME, state->asset_pak_data.data(), state->asset_pak_data.size());
+    asset_folder->pak_data.append(state->header_start);
+    asset_folder->pak_data.append(data, data + loaded_data);
+    asset_folder->pak_data.append(state->header_end);
+
+    std::string data_begin = asset_folder->pak_data.substr(size_cache, 16);
+    std::string data_end = asset_folder->pak_data.substr(asset_folder->pak_data.size() - 16, 16);
+
+    UnloadFileData(data);
+  }
+
+  SaveFileData(asset_folder->pak_file_name.c_str(), asset_folder->pak_data.data(), asset_folder->pak_data.size());
 }
 void write_map_pak(void) {
-
   for (size_t itr_000 = 1u; itr_000 <= MAX_WORLDMAP_LOCATIONS; ++itr_000) 
   {
 		append_map_pak_data(WSF_CONTENT_COLLISION, itr_000, 0);
@@ -162,12 +182,11 @@ const char * append_map_pak_data(worldmap_stage_file_content content_type, i32 l
 
 	state->file_buffer.push_back(state->read_buffer);
 	state->read_buffer.clear();
-  SaveFileData("eager.txt", state->map_pak_data.data(), state->map_pak_data.size());
 	return state->file_buffer.back().c_str();
 }
 
 const char* file_ext_enum_to_str(file_extension ext) {
-  if (ext >= FILE_EXT_MAX || ext <= FILE_EXT_UNDEFINED) {
+  if (ext >= FILE_EXT_MAX or ext <= FILE_EXT_UNDEFINED) {
     TraceLog(LOG_WARNING, "main::file_ext_enum_to_str()::File ext is out of bound");
     return nullptr;
   }
@@ -183,6 +202,9 @@ const char* file_ext_enum_to_str(file_extension ext) {
     }
     case FILE_EXT_TXT: { 
       return ".txt";
+    }
+    case FILE_EXT_LOC_DATA: { 
+      return "._loc_data";
     }
     default: {
       TraceLog(LOG_ERROR, "main::file_ext_enum_to_str()::Unsupported File Extension");
