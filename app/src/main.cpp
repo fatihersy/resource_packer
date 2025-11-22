@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #include "defines.h"
 #include "raylib.h"
 #include "core/fmemory.h"
@@ -13,6 +15,22 @@
 #define MAP_FILE_EXTENSION ".txt"
 #define MAP_PAK_FOLDER_PATH "map_layers/"
 #define ASSET_PAK_FOLDER_PATH "asset_files/"
+
+typedef struct write_pak_result {
+  std::string file_name;
+  u64 size;
+  bool is_success;
+  write_pak_result() {
+    this->file_name = std::string();
+    this->size = 0u;
+    this->is_success = false;
+  }
+  write_pak_result(bool _success, const char * _name = "", u64 _size = 0u) : write_pak_result() {
+    this->is_success = _success;
+    this->file_name = _name;
+    this->size = _size;
+  }
+} write_pak_result;
 
 typedef struct main_state {
   i32 stage_count;
@@ -49,8 +67,8 @@ filename_offset_data filename_offset(std::string str);
 const char* get_header(file_data* curr_file);
 std::string stage_index_to_filename(worldmap_stage_file_content wsf_type, i32 index, i32 layer = 0);
 
-void write_asset_pak(asset_pak_folder* asset_folder);
-void write_map_pak(void);
+write_pak_result write_asset_pak(asset_pak_folder* asset_folder);
+write_pak_result write_map_pak(void);
 const char * append_map_pak_data(worldmap_stage_file_content content_type, i32 location, i32 layer);
 
 const char* file_ext_enum_to_str(file_extension ext);
@@ -84,32 +102,25 @@ int main(void)
   state->folder_to_pak.push_back(asset_pak_folder("asset1.pak", "asset1_files/",
     std::vector<std::string>({
       "aaa_game_start_loading_screen.png",
-      "abracadabra.ttf",
+      "worldmap_wo_clouds.png",
       "black_background_1.png",
       "black_background_2.png",
+      "zap.png",
+      "mood.ttf",
+      "miosevka_italic.ttf",
+      "miosevka_light.ttf",
+      "miosevka_regular.ttf",
+      "miosevka_bold.ttf",
+      "coin_pickup.mp3",
+      "health_pickup.mp3",
+      "level_up.mp3",
       "button_click1.wav",
       "button_click2.wav",
       "button_click3.wav",
-      "coin_pickup.mp3",
       "deny1.wav",
       "deny2.wav",
       "exp_pickup.wav",
       "game_over.wav",
-      "health_pickup.mp3",
-      "ingame_play_theme1.ogg",
-      "ingame_play_theme2.ogg",
-      "ingame_play_theme3.ogg",
-      "ingame_play_theme4.ogg",
-      "level_up.mp3",
-      "mainmenu_theme1.wav",
-      "mainmenu_theme2.wav",
-      "mainmenu_theme3.wav",
-      "map_selection1.wav",
-      "map_selection2.wav",
-      "miosevka_light.ttf",
-      "miosevka_light_italic.ttf",
-      "worldmap_wo_clouds.png",
-      "zap.png",
       "zap1.wav",
       "zap2.wav",
       "zap3.wav",
@@ -117,6 +128,54 @@ int main(void)
       "zombie_die1.wav",
       "zombie_die2.wav",
       "zombie_die3.wav",
+      "mainmenu_theme1.wav",
+      "mainmenu_theme2.wav",
+      "mainmenu_theme3.wav",
+      "map_selection1.wav",
+      "map_selection2.wav",
+      "ingame_play_theme1.ogg",
+      "ingame_play_theme2.ogg",
+      "ingame_play_theme3.ogg",
+      "ingame_play_theme4.ogg",
+      "spin_result_star_105x105.png",
+      "spin_sfx.wav",
+      "spin_result.wav",
+      "entrance1_160x280.png",
+      "entrance2_160x280.png",
+      "entrance3_160x280.png",
+      "entrance4_160x280.png",
+      "entrance5_160x280.png",
+      "entrance6_160x224.png",
+      "entrance7_160x280.png",
+      "entrance8_160x280.png",
+      "entrance9_160x280.png",
+      "sigils/ability_cd_clear-modified.png",
+      "sigils/aoe_clear-modified.png",
+      "sigils/basic_attack_damage_clear-modified.png",
+      "sigils/basic_attack_speed_clear-modified.png",
+      "sigils/condition_duration_clear-modified.png",
+      "sigils/critical_chance_clear-modified.png",
+      "sigils/critical_damage_clear-modified.png",
+      "sigils/damage_deferral_clear-modified.png",
+      "sigils/damage_over_time_clear-modified.png",
+      "sigils/damage_reduction_clear-modified.png",
+      "sigils/drop_rate_clear-modified.png",
+      "sigils/exp_gain_clear-modified.png",
+      "sigils/health_sigil_clear-modified.png",
+      "sigils/hp_regen_clear-modified.png",
+      "sigils/letal_sigil_effectiveness_clear-modified.png",
+      "sigils/mana_clear-modified.png",
+      "sigils/mana_regen_clear-modified.png",
+      "sigils/move_speed_clear-modified.png",
+      "sigils/overall_damage_clear-modified.png",
+      "sigils/overall_luck_clear-modified.png",
+      "sigils/projectile_amouth_clear-modified.png",
+      "sigils/reward_modifier_clear-modified.png",
+      "sigils/sigil_effectiveness_clear-modified.png",
+      "sigils/stamina_regen_clear-modified.png",
+      "sigils/stamina_sigil_clear-modified.png",
+      "sigils/total_trait_points_clear-modified.png",
+      "sigils/vital_sigil_effectiveness_clear-modified.png"
     })
   ));
 
@@ -141,17 +200,28 @@ int main(void)
 	state->header_start_size = TextLength(state->header_start.c_str());
 	state->header_end_size = TextLength(state->header_end.c_str());
 
-  write_asset_pak(&state->folder_to_pak.at(0));
-  write_asset_pak(&state->folder_to_pak.at(1));
+  write_pak_result pak1_result = write_asset_pak(&state->folder_to_pak.at(0));
+  if (not pak1_result.is_success) {
+    throw std::runtime_error("write_asset_pak for asset1 return with failure");
+  }
+  write_pak_result pak2_result = write_asset_pak(&state->folder_to_pak.at(1));
+  if (not pak2_result.is_success) {
+    throw std::runtime_error("write_asset_pak for asset2 return with failure");
+  }
 
-  write_map_pak();
+  write_pak_result map_result = write_map_pak();
+
+  
+  TraceLog(LOG_INFO, "%s is written with %llu bytes", pak1_result.file_name.c_str(), pak1_result.size);
+  TraceLog(LOG_INFO, "%s is written with %llu bytes", pak2_result.file_name.c_str(), pak2_result.size);
+  TraceLog(LOG_INFO, "%s is written with %llu bytes", map_result.file_name.c_str(),  map_result.size);
 
   return EXIT_SUCCESS;
 }
 
-void write_asset_pak(asset_pak_folder* asset_folder) {
+write_pak_result write_asset_pak(asset_pak_folder* asset_folder) {
   if (not asset_folder or asset_folder == nullptr) {
-    return;
+    return write_pak_result(false);
   }
 
   for (size_t itr_000 = 0u; itr_000 < asset_folder->file_names.size(); ++itr_000) {
@@ -165,7 +235,7 @@ void write_asset_pak(asset_pak_folder* asset_folder) {
     u8* data = LoadFileData(path, &loaded_data);
 		if (loaded_data <= 1) {
       TraceLog(LOG_INFO, "main::write_asset_pak()::file '%s' cannot loaded successfully", _path.c_str());
-			return;
+			write_pak_result(false);
 		}
     size_t size_cache = asset_folder->pak_data.size();
 
@@ -180,8 +250,9 @@ void write_asset_pak(asset_pak_folder* asset_folder) {
   }
 
   SaveFileData(asset_folder->pak_file_name.c_str(), asset_folder->pak_data.data(), asset_folder->pak_data.size());
+  return write_pak_result(true, asset_folder->pak_file_name.c_str(), asset_folder->pak_data.size());
 }
-void write_map_pak(void) {
+write_pak_result write_map_pak(void) {
   for (size_t itr_000 = 1u; itr_000 <= MAX_WORLDMAP_LOCATIONS; ++itr_000) 
   {
 		append_map_pak_data(WSF_CONTENT_COLLISION, itr_000, 0);
@@ -196,6 +267,7 @@ void write_map_pak(void) {
   }
 
   SaveFileData(MAP_PAK_FILE_NAME, state->map_pak_data.data(), state->map_pak_data.size());
+  return write_pak_result(true, MAP_PAK_FILE_NAME, state->map_pak_data.size());
 }
 const char * append_map_pak_data(worldmap_stage_file_content content_type, i32 location, i32 layer) {
   std::string wsf_filename = stage_index_to_filename(content_type, location, layer);
